@@ -9,14 +9,7 @@ require('dotenv').config()
 
 const port = process.env.PORT ||3000;
 
-app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        // 'https://onliupstudy.web.app',
-        // 'https://onliupstudy.firebaseapp.com',
-    ],
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
@@ -52,13 +45,24 @@ const verifyToken = async (req, res, next) => {
 
 }
 
-async function run() {
+const dbConnect = async () => {
+    try{
+      client.connect()
+      console.log('DB Connected Successfully')
+    } catch (error){
+      console.log(error.name, error.message)
+    }
+  }
+  dbConnect()
 
 
-    try {
-        await client.connect();
 
         const AssignmentsCollection = client.db('OGS').collection('UserAssignments')
+
+        
+        app.get('/', (req, res) => {
+            res.send('Server Started')
+        })
         
 
 
@@ -227,19 +231,8 @@ async function run() {
             res.send(result);
         })
 
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    } finally {
-        // Ensures that the client will close when you finish/error
-        // await client.close();
-    }
-}
-run().catch(console.dir);
 
 
-app.get('/', (req, res) => {
-    res.send('Server Started')
-})
 
 app.listen(port, () => [
     console.log(`Server Started, ${port}`)

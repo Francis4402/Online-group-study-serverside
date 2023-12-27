@@ -2,7 +2,6 @@ const express = require('express');
 const app = express();
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
-const cookieParser = require('cookie-parser')
 const {decode} = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId} = require('mongodb');
 require('dotenv').config()
@@ -11,7 +10,6 @@ const port = process.env.PORT ||3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(cookieParser());
 
 
 const uri = `mongodb+srv://${process.env.User_DB}:${process.env.User_pass}@cluster0.cefd8nv.mongodb.net/?retryWrites=true&w=majority`;
@@ -25,25 +23,9 @@ const client = new MongoClient(uri, {
 });
 
 
-const logger = async (req, res, next) => {
-    next();
-}
 
-const verifyToken = async (req, res, next) => {
-    const token = req.cookies?.token;
-    if (!token) {
-        return res.status(401).send({message: 'unauthorized'})
-    }
-    jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
-        if (err) {
-            console.log(err)
-            return res.status(401).send({message: 'unauthorized'})
-        }
-        req.user = decoded;
-        next();
-    })
 
-}
+
 
 const dbConnect = async () => {
     try{
@@ -63,20 +45,31 @@ const dbConnect = async () => {
         app.get('/', (req, res) => {
             res.send('Server Started')
         })
-        
 
+
+        const logger = async (req, res, next) => {
+            next();
+        }
 
         app.post('/jwt', logger, async (req, res) => {
             const user = req.body;
             const token = jwt.sign(user, process.env.ACCESS_TOKEN, {expiresIn: '1h'});
-
-            res.cookie('token', token, {
-                httpOnly: true,
-                // secure: false,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            }).send({success: true})
+            res.send({token});
         })
+
+        const verifyToken = async (req, res, next) => {
+            if(!req.headers.authorization){
+                return res.status(401).send({message: 'forbidden access'});
+            }
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+                if(err){
+                    return res.status(401).send({message: 'forbidden access'})
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
 
         app.post('/logout', async (req, res) => {
             const user = req.body;
@@ -148,25 +141,10 @@ const dbConnect = async () => {
             res.send(result);
         })
 
-
-
-
-        app.get('/assignments', logger, verifyToken, async (req, res) => {
-
-            const page =parseInt(req.query.page);
-            const size = parseInt(req.query.size);
-
-            if(req.user.email !== req.query.email){
-                return res.status(403).send({message: 'forbidden access'})
-            }
-
-            let query = {};
-            if(req.query?.email){
-                query = {email: req.query.email}
-            }
-
-            const assignment = AssignmentsCollection.find(query).skip(page * size).limit(size)
-            const result = await assignment.toArray();
+        app.get('/assignments', async (req, res) => {
+            const email = req.query.email;
+            const query = {email: email}
+            const result = await AssignmentsCollection.find(query).toArray();
             res.send(result);
         })
 
@@ -234,6 +212,6 @@ const dbConnect = async () => {
 
 
 
-app.listen(port, () => [
-    console.log(`Server Started, ${port}`)
-])
+app.listen(port, () => {
+        console.log(`Server Started, ${port}`)
+})

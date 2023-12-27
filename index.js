@@ -40,7 +40,7 @@ const dbConnect = async () => {
 
 
         const AssignmentsCollection = client.db('OGS').collection('UserAssignments')
-
+        const UserMarksCollection = client.db('OGS').collection('userMarks')
         
         app.get('/', (req, res) => {
             res.send('Server Started')
@@ -77,6 +77,29 @@ const dbConnect = async () => {
             res.clearCookie('token', {maxAge: 0}).send({success: true})
         })
 
+        app.get('/totalmarks', async (req, res) => {
+            const result = await UserMarksCollection.find().toArray();
+            res.send(result);
+        })
+
+        app.get('/usermarks', async (req, res) => {
+            const email = req.query.email;
+            const query = {email: email}
+            const result = await UserMarksCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post('/usermarks', async (req, res) => {
+            const user = req.body;
+            const query = {email: user.email}
+            const existingUser = await UserMarksCollection.findOne(query);
+            if(existingUser){
+                return res.send({message: 'Your Mark already exists', insertedId: null})
+            }
+            const result = await UserMarksCollection.insertOne(user);
+            res.send(result);
+        })
+
         app.get('/homeassignments', async (req, res) => {
 
             const page = parseInt(req.query.page);
@@ -99,40 +122,6 @@ const dbConnect = async () => {
             res.send({count})
         })
 
-        app.post('/homeassignments', async (req, res) => {
-            const assignment = req.body;
-            const result = await AssignmentsCollection.insertOne(assignment);
-            res.send(result);
-        })
-
-        app.put('/homeassignments/:id', async (req, res) => {
-            const id = req.params.id;
-            const filter = {_id: new ObjectId(id)}
-            const updateAssignment = req.body;
-            const assignment = {
-                $set: {
-
-                    userMarks: updateAssignment.userMarks,
-
-                }
-            }
-            const result = await AssignmentsCollection.updateOne(filter, assignment);
-            res.send(result);
-        })
-
-        app.patch('/homeassignments/:id', async (req, res) => {
-            const id = req.params.id;
-            const filter = {_id: new ObjectId(id)}
-            const UpdatedAssignment = req.body;
-
-            const updateDoc = {
-                $set: {
-                    status: UpdatedAssignment.status
-                }
-            }
-            const result = await AssignmentsCollection.updateOne(filter, updateDoc)
-            res.send(result)
-        })
 
         app.delete('/homeassignments/:id', async (req, res) => {
             const id = req.params.id;
@@ -175,10 +164,9 @@ const dbConnect = async () => {
             const assignment = {
                 $set: {
                     title: updateAssignment.title,
-                    thumbnail: updateAssignment.thumbnail,
+                    image: updateAssignment.image,
                     description: updateAssignment.description,
                     email: updateAssignment.email,
-                    userMarks: updateAssignment.userMarks,
                     marks: updateAssignment.marks,
                     date: updateAssignment.date,
                     level: updateAssignment.level

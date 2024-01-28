@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 
-const uri = `mongodb+srv://${process.env.User_DB}:${process.env.User_pass}@cluster0.cefd8nv.mongodb.net/?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.User_DB}:${process.env.User_pass}@cluster0.noqamg3.mongodb.net/?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, {
     serverApi: {
